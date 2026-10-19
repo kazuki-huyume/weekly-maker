@@ -10,6 +10,7 @@ let currentColor = '#85c7f2';
 const titleFontSelect = document.getElementById('titleFontSelect');
 const bodyFontSelect = document.getElementById('bodyFontSelect');
 const templateSelect = document.getElementById('templateSelect');
+const fontFileUpload = document.getElementById('fontFileUpload');
 
 let titleFont = titleFontSelect.value;
 let bodyFont = bodyFontSelect.value;
@@ -115,12 +116,50 @@ templateSelect.addEventListener('change', (e) => {
   loadTemplate(e.target.value);
 });
 
+// カスタムフォントファイルの動的読み込み処理
+fontFileUpload.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    const fontBuffer = await file.arrayBuffer();
+    // 拡張子を除いたファイル名をフォントファミリー名として登録
+    const fontName = file.name.replace(/\.[^/.]+$/, "");
+    const newFontFace = new FontFace(fontName, fontBuffer);
+
+    await newFontFace.load();
+    document.fonts.add(newFontFace);
+
+    const fontVal = `'${fontName}', sans-serif`;
+
+    // タイトルフォントと本文フォントの選択肢に追加
+    const optTitle = document.createElement('option');
+    optTitle.value = fontVal;
+    optTitle.textContent = `カスタム: ${fontName}`;
+    titleFontSelect.appendChild(optTitle);
+
+    const optBody = document.createElement('option');
+    optBody.value = fontVal;
+    optBody.textContent = `カスタム: ${fontName}`;
+    bodyFontSelect.appendChild(optBody);
+
+    // 追加したフォントを即時適用
+    titleFontSelect.value = fontVal;
+    titleFont = fontVal;
+
+    document.fonts.ready.then(() => drawSchedule());
+  } catch (err) {
+    console.error('フォントの読み込みに失敗しました:', err);
+    alert('フォントファイルの読み込みに失敗しました。対応形式（.ttf / .otf / .woff）かご確認ください。');
+  }
+});
+
 function createInputs() {
   startDateInput.value = getInitialMonday();
   updateInputLabels();
 
   document.querySelectorAll('input, select').forEach(input => {
-    if(input.id !== 'themeColorPicker' && input.id !== 'areaBgColor') {
+    if(input.id !== 'themeColorPicker' && input.id !== 'areaBgColor' && input.id !== 'fontFileUpload') {
       input.addEventListener('input', drawSchedule);
     }
   });
@@ -366,7 +405,7 @@ function drawSchedule() {
     startDateInputVal: startDateInput.value,
     textInputs,
     timeInputs,
-    assets: loadedAssets[currentTemplateId] || {} // プリロードした画像を各テンプレートに渡す
+    assets: loadedAssets[currentTemplateId] || {}
   };
 
   currentTemplateModule.render(ctx, canvas, state);
